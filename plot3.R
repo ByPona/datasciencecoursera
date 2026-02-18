@@ -1,30 +1,26 @@
 library("data.table")
+library("ggplot2")
 
-setwd("~/Desktop/datasciencecoursera/4_Exploratory_Data_Analysis/project/data")
+setwd("~/Desktop/datasciencecoursera/4_Exploratory_Data_Analysis/project2")
+path <- getwd()
+download.file(url = "https://d396qusza40orc.cloudfront.net/exdata%2Fdata%2FNEI_data.zip"
+              , destfile = paste(path, "dataFiles.zip", sep = "/"))
+unzip(zipfile = "dataFiles.zip")
 
-#Reads in data from file then subsets data for specified dates
-powerDT <- data.table::fread(input = "household_power_consumption.txt"
-                             , na.strings="?"
-)
+# Load the NEI & SCC data frames.
+NEI <- data.table::as.data.table(x = readRDS("summarySCC_PM25.rds"))
+SCC <- data.table::as.data.table(x = readRDS("Source_Classification_Code.rds"))
 
-# Prevents Scientific Notation
-powerDT[, Global_active_power := lapply(.SD, as.numeric), .SDcols = c("Global_active_power")]
+# Subset NEI data by Baltimore
+baltimoreNEI <- NEI[fips=="24510",]
 
-# Making a POSIXct date capable of being filtered and graphed by time of day
-powerDT[, dateTime := as.POSIXct(paste(Date, Time), format = "%d/%m/%Y %H:%M:%S")]
+png("plot3.png")
 
-# Filter Dates for 2007-02-01 and 2007-02-02
-powerDT <- powerDT[(dateTime >= "2007-02-01") & (dateTime < "2007-02-03")]
-
-png("plot3.png", width=480, height=480)
-
-# Plot 3
-plot(powerDT[, dateTime], powerDT[, Sub_metering_1], type="l", xlab="", ylab="Energy sub metering")
-lines(powerDT[, dateTime], powerDT[, Sub_metering_2],col="red")
-lines(powerDT[, dateTime], powerDT[, Sub_metering_3],col="blue")
-legend("topright"
-       , col=c("black","red","blue")
-       , c("Sub_metering_1  ","Sub_metering_2  ", "Sub_metering_3  ")
-       ,lty=c(1,1), lwd=c(1,1))
+ggplot(baltimoreNEI,aes(factor(year),Emissions,fill=type)) +
+  geom_bar(stat="identity") +
+  theme_bw() + guides(fill=FALSE)+
+  facet_grid(.~type,scales = "free",space="free") + 
+  labs(x="year", y=expression("Total PM"[2.5]*" Emission (Tons)")) + 
+  labs(title=expression("PM"[2.5]*" Emissions, Baltimore City 1999-2008 by Source Type"))
 
 dev.off()
